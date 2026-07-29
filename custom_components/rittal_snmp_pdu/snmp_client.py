@@ -12,6 +12,7 @@ from enum import Enum
 from pysnmp.hlapi.v3arch.asyncio import (
     CommunityData,
     ContextData,
+    Integer32,
     ObjectIdentity,
     ObjectType,
     SnmpEngine,
@@ -189,14 +190,20 @@ class SnmpClient:
                 results[oid] = value
         return results
 
-    async def set(self, oid: Oid, value: object) -> None:
+    async def set(self, oid: Oid, value: int) -> None:
+        """Set an OID to an integer value (cmcIIIVarValueInt is always Integer32).
+
+        pysnmp needs an ASN.1-typed value here, not a plain Python int --
+        passing one raw fails deep in the encoder with something like
+        "'int' object has no attribute 'getTagSet'".
+        """
         transport = await self._transport()
         error_indication, error_status, _error_index, _var_binds = await set_cmd(
             self._engine,
             self._auth_data(write=True),
             transport,
             ContextData(),
-            ObjectType(ObjectIdentity(oid), value),
+            ObjectType(ObjectIdentity(oid), Integer32(value)),
         )
         if error_indication:
             raise SnmpError(str(error_indication))

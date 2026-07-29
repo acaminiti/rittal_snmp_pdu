@@ -49,13 +49,32 @@ rationale behind non-obvious pieces (e.g. why the switch reads the relay
 var's own value instead of the separate status var, or why polling uses
 plain GET instead of GETBULK).
 
+## Prerequisites (on the PDU itself)
+
+Before adding this integration, on the PDU's own web UI (Configuration ->
+Network -> SNMP):
+
+- **SNMP must be enabled**, and specifically the version you're going to
+  use here -- v1/v2c and v3 are enabled independently on most CMC III
+  units.
+- **Know your community strings** if using v1/v2c. Some PDUs use one
+  read-only community for monitoring and a separate write-enabled one for
+  outlet control -- if outlet switching fails with a `noAccess` error,
+  that's the usual cause. Community strings are case-sensitive.
+- **Allowed hosts**: if the PDU restricts SNMP access to specific hosts
+  (an allow-list), add this Home Assistant instance's IP to it --
+  otherwise every request will silently time out with no useful error.
+- The **standard SNMP port (161)** is used and isn't configurable in this
+  integration.
+
 ## Installation (HACS custom repository)
 
 1. HACS -> Integrations -> the "..." menu -> Custom repositories.
 2. Add this repo's URL, category "Integration".
 3. Install "Rittal SNMP PDU", restart Home Assistant.
 4. Settings -> Devices & services -> Add integration -> "Rittal SNMP PDU".
-5. Enter the PDU's host and choose an SNMP version (v1/v2c/v3, default v3).
+5. Enter the PDU's host and choose an SNMP version (v1/v2c or v3, default
+   v3) -- the config flow repeats the reminders above at each step.
 
 ## Development
 

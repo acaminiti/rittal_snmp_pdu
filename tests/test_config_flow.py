@@ -4,6 +4,7 @@
 """
 import custom_components.rittal_snmp_pdu as integration_module
 from custom_components.rittal_snmp_pdu import config_flow as config_flow_module
+from custom_components.rittal_snmp_pdu.config_flow import build_client
 from custom_components.rittal_snmp_pdu.const import DOMAIN
 from custom_components.rittal_snmp_pdu.discovery import build_unit_map
 from custom_components.rittal_snmp_pdu.enquiry import DeviceInfo
@@ -56,7 +57,7 @@ async def test_v2c_happy_path_creates_entry(hass, enable_custom_integrations, mo
 
     result = await hass.config_entries.flow.async_configure(
         result["flow_id"],
-        {"host": "192.168.1.216", "port": 161, "snmp_version": "2c"},
+        {"host": "192.168.1.216", "snmp_version": "2c"},
     )
     assert result["step_id"] == "v1v2_credentials"
 
@@ -83,9 +84,26 @@ async def test_v3_selection_routes_to_v3_credentials_step(hass, enable_custom_in
     result = await hass.config_entries.flow.async_init(DOMAIN, context={"source": "user"})
     result = await hass.config_entries.flow.async_configure(
         result["flow_id"],
-        {"host": "192.168.1.216", "port": 161, "snmp_version": "3"},
+        {"host": "192.168.1.216", "snmp_version": "3"},
     )
     assert result["step_id"] == "v3_credentials"
+
+
+def test_build_client_uses_single_password_for_both_auth_and_priv():
+    """The PDU's own SNMPv3 config only exposes Username + Password (no
+    separate auth/priv fields like generic SNMPv3/USM) -- build_client must
+    use the one password for both, not require a second field."""
+    client = build_client(
+        {
+            "host": "192.168.1.216",
+            "snmp_version": "3",
+            "username": "admin",
+            "password": "hunter2",
+        }
+    )
+    auth = client._auth_data()
+    assert auth.authentication_key == "hunter2"
+    assert auth.privacy_key == "hunter2"
 
 
 async def test_connection_failure_shows_cannot_connect_error(hass, enable_custom_integrations, monkeypatch):
@@ -97,7 +115,7 @@ async def test_connection_failure_shows_cannot_connect_error(hass, enable_custom
     result = await hass.config_entries.flow.async_init(DOMAIN, context={"source": "user"})
     result = await hass.config_entries.flow.async_configure(
         result["flow_id"],
-        {"host": "192.168.1.216", "port": 161, "snmp_version": "2c"},
+        {"host": "192.168.1.216", "snmp_version": "2c"},
     )
     result = await hass.config_entries.flow.async_configure(
         result["flow_id"],

@@ -8,6 +8,7 @@ import voluptuous as vol
 from homeassistant.config_entries import ConfigEntry, ConfigFlow, OptionsFlow
 from homeassistant.core import callback
 from homeassistant.data_entry_flow import FlowResult
+from homeassistant.helpers import selector
 
 from .const import DEFAULT_PORT, DOMAIN
 from .discovery import UnitMap, unit_map_to_dict
@@ -27,8 +28,7 @@ CONF_VERSION = "snmp_version"
 CONF_READ_COMMUNITY = "read_community"
 CONF_WRITE_COMMUNITY = "write_community"
 CONF_USERNAME = "username"
-CONF_AUTH_KEY = "auth_key"
-CONF_PRIV_KEY = "priv_key"
+CONF_PASSWORD = "password"
 
 _V1V2_SCHEMA = vol.Schema(
     {
@@ -39,20 +39,25 @@ _V1V2_SCHEMA = vol.Schema(
 _V3_SCHEMA = vol.Schema(
     {
         vol.Required(CONF_USERNAME): str,
-        vol.Optional(CONF_AUTH_KEY): str,
-        vol.Optional(CONF_PRIV_KEY): str,
+        vol.Required(CONF_PASSWORD): str,
     }
 )
 
 
 def build_client(user_input: dict[str, Any]) -> SnmpClient:
-    """Construct an SnmpClient from flow/entry data (shared with __init__.py)."""
+    """Construct an SnmpClient from flow/entry data (shared with __init__.py).
+
+    The PDU's own SNMPv3 config only exposes Username + Password (no
+    separate auth/priv key fields, unlike generic SNMPv3/USM which
+    distinguishes them) -- so the same password is used for both here.
+    """
     version = SnmpVersion(user_input[CONF_VERSION])
     if version is SnmpVersion.V3:
+        password = user_input[CONF_PASSWORD]
         credentials: Any = SnmpV3Credentials(
             username=user_input[CONF_USERNAME],
-            auth_key=user_input.get(CONF_AUTH_KEY) or None,
-            priv_key=user_input.get(CONF_PRIV_KEY) or None,
+            auth_key=password,
+            priv_key=password,
         )
     else:
         credentials = SnmpV1V2Credentials(
@@ -87,9 +92,12 @@ class RittalSnmpPduConfigFlow(ConfigFlow, domain=DOMAIN):
         schema = vol.Schema(
             {
                 vol.Required("host"): str,
-                vol.Optional("port", default=DEFAULT_PORT): int,
-                vol.Required(CONF_VERSION, default=SnmpVersion.V3.value): vol.In(
-                    [SnmpVersion.V1.value, SnmpVersion.V2C.value, SnmpVersion.V3.value]
+                vol.Required(CONF_VERSION, default=SnmpVersion.V3.value): selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=[SnmpVersion.V2C.value, SnmpVersion.V3.value],
+                        mode=selector.SelectSelectorMode.DROPDOWN,
+                        translation_key=CONF_VERSION,
+                    )
                 ),
             }
         )
@@ -112,7 +120,7 @@ class RittalSnmpPduConfigFlow(ConfigFlow, domain=DOMAIN):
     async def async_step_v3_credentials(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
-        """SNMPv3 user/auth/priv -> test + discover -> confirm."""
+        """SNMPv3 username/password -> test + discover -> confirm."""
         if user_input is not None:
             self._user_input.update(user_input)
             errors = await self._test_and_discover()

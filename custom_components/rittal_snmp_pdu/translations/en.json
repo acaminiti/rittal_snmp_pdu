@@ -3,14 +3,15 @@
     "step": {
       "user": {
         "title": "Connect to Rittal PDU",
+        "description": "Make sure SNMP is enabled on the PDU (Configuration -> Network -> SNMP) and that this Home Assistant instance is allowed to reach it -- if the PDU restricts SNMP access to specific hosts, add this instance to that allowed list first. The standard SNMP port (161) is used and isn't configurable here.",
         "data": {
           "host": "Host",
-          "port": "Port",
           "snmp_version": "SNMP version"
         }
       },
       "v1v2_credentials": {
         "title": "SNMP community",
+        "description": "For SNMP v1/v2c: enter your read and write communities as configured on the PDU -- they're case-sensitive.",
         "data": {
           "read_community": "Read community string",
           "write_community": "Write community string (leave blank to reuse the read community)"
@@ -18,10 +19,10 @@
       },
       "v3_credentials": {
         "title": "SNMPv3 credentials",
+        "description": "Enter the SNMPv3 username and password configured on the PDU.",
         "data": {
           "username": "Username",
-          "auth_key": "Authentication key (leave blank for noAuth)",
-          "priv_key": "Privacy key (leave blank for noPriv)"
+          "password": "Password"
         }
       },
       "confirm": {
@@ -45,6 +46,14 @@
     },
     "error": {
       "cannot_connect": "Rediscovery failed: could not connect to the PDU."
+    }
+  },
+  "selector": {
+    "snmp_version": {
+      "options": {
+        "2c": "SNMP v1/v2c",
+        "3": "SNMPv3 (secure)"
+      }
     }
   }
 }

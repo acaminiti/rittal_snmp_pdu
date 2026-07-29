@@ -6,6 +6,7 @@ Python values; all pysnmp types are confined to this module.
 """
 from __future__ import annotations
 
+import asyncio
 from dataclasses import dataclass
 from enum import Enum
 
@@ -146,11 +147,20 @@ class SnmpClient:
     _GET_CHUNK_SIZE = 40
 
     async def get_bulk_many(self, oids: list[Oid]) -> dict[Oid, object]:
-        """Fetch many known OIDs at once, chunked into multiple GETs as needed."""
+        """Fetch many known OIDs at once, chunked into multiple GETs as needed.
+
+        Chunks are issued concurrently (independent requests, no shared
+        state to race on) rather than one-at-a-time, since wall-clock time
+        for a poll cycle otherwise scales with chunk count.
+        """
+        chunks = [
+            oids[start : start + self._GET_CHUNK_SIZE]
+            for start in range(0, len(oids), self._GET_CHUNK_SIZE)
+        ]
+        chunk_results = await asyncio.gather(*(self.get_many(chunk) for chunk in chunks))
         results: dict[Oid, object] = {}
-        for start in range(0, len(oids), self._GET_CHUNK_SIZE):
-            chunk = oids[start : start + self._GET_CHUNK_SIZE]
-            results.update(await self.get_many(chunk))
+        for chunk_result in chunk_results:
+            results.update(chunk_result)
         return results
 
     async def walk_column(self, prefix: Oid) -> dict[Oid, object]:

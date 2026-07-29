@@ -1,6 +1,7 @@
 """Data update coordinator: polls every OID the enquiry pass discovered."""
 from __future__ import annotations
 
+import asyncio
 import logging
 from dataclasses import dataclass
 from datetime import timedelta
@@ -61,9 +62,11 @@ class RittalPduCoordinator(DataUpdateCoordinator[dict[int, VarSample]]):
             VAR_TABLE_BASE + (VAR_QUALITY_COL, self.device_index, idx) for idx in self.var_indices
         ]
         try:
-            values = await self.client.get_bulk_many(value_oids)
-            strings = await self.client.get_bulk_many(str_oids)
-            qualities = await self.client.get_bulk_many(quality_oids)
+            values, strings, qualities = await asyncio.gather(
+                self.client.get_bulk_many(value_oids),
+                self.client.get_bulk_many(str_oids),
+                self.client.get_bulk_many(quality_oids),
+            )
         except SnmpError as err:
             raise UpdateFailed(f"Error polling Rittal PDU: {err}") from err
 

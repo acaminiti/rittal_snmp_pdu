@@ -20,10 +20,13 @@ REDISCOVER_ACTION = "rediscover"
 
 
 class RittalPduOptionsFlow(OptionsFlow):
+    """Scan interval setting, with a checkbox to trigger rediscovery instead."""
+
     def __init__(self, config_entry: ConfigEntry) -> None:
         self._config_entry = config_entry
 
     async def async_step_init(self, user_input: dict[str, Any] | None = None) -> FlowResult:
+        """Show/save the scan interval, or branch to rediscovery if requested."""
         errors: dict[str, str] = {}
         if user_input is not None:
             if user_input.get(REDISCOVER_ACTION):
@@ -44,6 +47,7 @@ class RittalPduOptionsFlow(OptionsFlow):
         return self.async_show_form(step_id="init", data_schema=schema, errors=errors)
 
     async def _rediscover(self, errors: dict[str, str]) -> FlowResult:
+        """Re-run the enquiry walk and persist the refreshed unit map."""
         runtime = self._config_entry.runtime_data
         try:
             await test_connection(runtime.client)

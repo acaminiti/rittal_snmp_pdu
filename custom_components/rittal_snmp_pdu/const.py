@@ -56,6 +56,8 @@ class VarType(IntEnum):
 
 
 class VarDataType(IntEnum):
+    """cmcIIIVarDataType: what kind of value cmcIIIVarValueInt/Str hold."""
+
     NOT_AVAIL = 1
     INT = 2
     STRING = 3
@@ -63,6 +65,8 @@ class VarDataType(IntEnum):
 
 
 class VarAccess(IntEnum):
+    """cmcIIIVarAccess: whether a var's value can be written, and how."""
+
     NONE = 1
     READONLY = 2
     READWRITE = 3
@@ -71,6 +75,12 @@ class VarAccess(IntEnum):
 
 
 class VarQuality(IntEnum):
+    """cmcIIIVarQuality: the agent's own confidence/alarm state for a var.
+
+    Drives entity availability/problem state; the "*_NO_VALUE" variants
+    mean the same quality but with no value currently backing it.
+    """
+
     UNDEFINED = 1
     OK = 2
     WARNING = 3

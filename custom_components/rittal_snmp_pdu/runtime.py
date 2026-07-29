@@ -11,6 +11,8 @@ from .snmp_client import SnmpClient
 
 @dataclass
 class RittalPduRuntimeData:
+    """Everything the switch/sensor platforms need, built once at entry setup."""
+
     client: SnmpClient
     coordinator: RittalPduCoordinator
     device_info: DeviceInfo

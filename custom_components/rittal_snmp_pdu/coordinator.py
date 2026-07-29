@@ -24,6 +24,8 @@ _LOGGER = logging.getLogger(__name__)
 
 @dataclass(frozen=True)
 class VarSample:
+    """One var's polled state: its int/string values plus agent quality."""
+
     value_int: int
     value_str: str
     quality: int
@@ -52,6 +54,7 @@ class RittalPduCoordinator(DataUpdateCoordinator[dict[int, VarSample]]):
         self.var_indices = var_indices
 
     async def _async_update_data(self) -> dict[int, VarSample]:
+        """Poll value/string/quality for every var_index, keyed by var_index."""
         value_oids = [
             VAR_TABLE_BASE + (VAR_VALUE_INT_COL, self.device_index, idx) for idx in self.var_indices
         ]

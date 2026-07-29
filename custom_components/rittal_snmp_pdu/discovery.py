@@ -52,6 +52,8 @@ class RawVar:
 
 @dataclass(frozen=True)
 class SensorDescriptor:
+    """One classified `value`-type var, ready to become a sensor entity."""
+
     var_index: int
     key: str  # unique leaf key, e.g. "Current.Value" or "Power.Active.Value"
     unit: str
@@ -61,12 +63,20 @@ class SensorDescriptor:
 
 @dataclass(frozen=True)
 class SwitchDescriptor:
+    """An outlet's relay control (write) paired with its status feedback (read).
+
+    See switch.py for why both exist: the relay var is used for both
+    control and on/off state; status is exposed as a diagnostic sensor.
+    """
+
     relay_var_index: int  # writable var (General.Relay)
     status_var_index: int  # read-only feedback var (General.Status)
 
 
 @dataclass(frozen=True)
 class OutletGroup:
+    """Everything discovered under one `Sockets.Socket NN` group."""
+
     socket_number: int
     name: str  # e.g. "Socket 01"
     switch: SwitchDescriptor | None
@@ -95,10 +105,12 @@ def _split_top_group(name: str) -> tuple[str, str]:
 
 
 def _is_value_leaf(var: RawVar) -> bool:
+    """Whether a var is a plain numeric reading (candidate sensor)."""
     return var.var_type == VarType.VALUE and var.data_type == VarDataType.INT
 
 
 def _build_sensor(var: RawVar, leaf: str) -> SensorDescriptor:
+    """Wrap one value-type var as a SensorDescriptor."""
     return SensorDescriptor(
         var_index=var.var_index,
         key=leaf,
@@ -109,6 +121,7 @@ def _build_sensor(var: RawVar, leaf: str) -> SensorDescriptor:
 
 
 def _build_outlet(group_name: str, leaves: dict[str, RawVar]) -> OutletGroup:
+    """Classify one `Sockets.Socket NN` group's leaves into a switch + sensors."""
     match = _SOCKET_NAME_RE.match(group_name.split(".", 1)[1])
     socket_number = int(match.group(1)) if match else 0
 
@@ -175,6 +188,7 @@ def all_var_indices(unit_map: UnitMap) -> list[int]:
 
 
 def _sensor_to_dict(sensor: SensorDescriptor) -> dict:
+    """SensorDescriptor -> plain dict (paired with _sensor_from_dict)."""
     return {
         "var_index": sensor.var_index,
         "key": sensor.key,
@@ -185,6 +199,7 @@ def _sensor_to_dict(sensor: SensorDescriptor) -> dict:
 
 
 def _sensor_from_dict(data: dict) -> SensorDescriptor:
+    """Inverse of _sensor_to_dict."""
     return SensorDescriptor(
         var_index=data["var_index"],
         key=data["key"],
@@ -219,6 +234,7 @@ def unit_map_to_dict(unit_map: UnitMap) -> dict:
 
 
 def unit_map_from_dict(data: dict) -> UnitMap:
+    """Inverse of unit_map_to_dict -- reconstructs a UnitMap from config entry data."""
     return UnitMap(
         root_sensors=[_sensor_from_dict(s) for s in data["root_sensors"]],
         inlet_sensors=[_sensor_from_dict(s) for s in data["inlet_sensors"]],

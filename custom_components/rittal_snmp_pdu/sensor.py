@@ -33,6 +33,7 @@ _UNIT_DEVICE_CLASS = {
 
 
 def _apply_scale(raw: int, scale: int) -> float:
+    """Apply cmcIIIVarScale: negative divides, positive multiplies, 0 is a no-op."""
     if scale > 0:
         return raw * scale
     if scale < 0:
@@ -41,6 +42,7 @@ def _apply_scale(raw: int, scale: int) -> float:
 
 
 def _describe(descriptor: SensorDescriptor) -> SensorEntityDescription:
+    """Derive an entity description purely from unit/energy-resettable flag."""
     device_class = _UNIT_DEVICE_CLASS.get(descriptor.unit)
     state_class: SensorStateClass | None = SensorStateClass.MEASUREMENT
     if device_class is SensorDeviceClass.ENERGY:
@@ -60,6 +62,8 @@ def _describe(descriptor: SensorDescriptor) -> SensorEntityDescription:
 async def async_setup_entry(
     hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback
 ) -> None:
+    """Add sensors for every value-type var discovery found: root, inlet, and
+    per-outlet, plus a diagnostic status-text sensor for each switchable outlet."""
     runtime: RittalPduRuntimeData = entry.runtime_data
     unit_map = runtime.unit_map
 
@@ -90,6 +94,8 @@ async def async_setup_entry(
 
 
 class VarValueSensor(RittalPduEntity, SensorEntity):
+    """A single value-type var (current/power/energy/etc.) as a sensor."""
+
     def __init__(self, coordinator, device_info, entry: ConfigEntry, descriptor: SensorDescriptor, scope: str) -> None:
         self.entity_description = _describe(descriptor)
         super().__init__(
@@ -102,6 +108,7 @@ class VarValueSensor(RittalPduEntity, SensorEntity):
 
     @property
     def native_value(self) -> float | None:
+        """Raw polled int with cmcIIIVarScale applied, or None if not yet polled."""
         sample = self.coordinator.data.get(self._var_index)
         if sample is None:
             return None
@@ -109,6 +116,7 @@ class VarValueSensor(RittalPduEntity, SensorEntity):
 
     @property
     def available(self) -> bool:
+        """False until this var has been successfully polled at least once."""
         return super().available and self._var_index in self.coordinator.data
 
 
@@ -128,9 +136,11 @@ class OutletStatusTextSensor(RittalPduEntity, SensorEntity):
 
     @property
     def native_value(self) -> str | None:
+        """The Status var's own text (e.g. "Off"), independent of the relay var."""
         sample = self.coordinator.data.get(self._status_var_index)
         return sample.value_str if sample is not None else None
 
     @property
     def available(self) -> bool:
+        """False until the status var has been successfully polled at least once."""
         return super().available and self._status_var_index in self.coordinator.data

@@ -21,6 +21,7 @@ from .runtime import RittalPduRuntimeData
 async def async_setup_entry(
     hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback
 ) -> None:
+    """Add one switch per outlet discovery found with a detected relay control."""
     runtime: RittalPduRuntimeData = entry.runtime_data
     entities = [
         OutletSwitch(runtime.coordinator, entry, outlet.socket_number, outlet.name, outlet.switch)
@@ -31,6 +32,8 @@ async def async_setup_entry(
 
 
 class OutletSwitch(RittalPduEntity, SwitchEntity):
+    """On/off control for one outlet, backed by its General.Relay var."""
+
     _attr_name = None  # outlet device name doubles as the entity name
 
     def __init__(self, coordinator, entry: ConfigEntry, socket_number: int, name: str, switch) -> None:
@@ -44,15 +47,19 @@ class OutletSwitch(RittalPduEntity, SwitchEntity):
 
     @property
     def is_on(self) -> bool | None:
+        """Relay's own current value (0/1) -- None if not yet polled."""
         sample = self.coordinator.data.get(self._relay_var_index)
         return bool(sample.value_int) if sample is not None else None
 
     @property
     def available(self) -> bool:
+        """False until the relay var has been successfully polled at least once."""
         return super().available and self._relay_var_index in self.coordinator.data
 
     async def async_turn_on(self, **kwargs) -> None:
+        """Write 1 to the relay var and refresh to pick up the new state."""
         await self.coordinator.async_write_var(self._relay_var_index, 1)
 
     async def async_turn_off(self, **kwargs) -> None:
+        """Write 0 to the relay var and refresh to pick up the new state."""
         await self.coordinator.async_write_var(self._relay_var_index, 0)

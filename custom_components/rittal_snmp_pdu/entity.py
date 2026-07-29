@@ -13,6 +13,8 @@ from .enquiry import DeviceInfo as PduDeviceInfo, chassis_model_suffix
 
 
 def _model_name(device_info: PduDeviceInfo) -> str:
+    """Human model name from the chassis OID (e.g. "PDU-MAN-M-1P-16A-C20-12-00"),
+    falling back to the raw device name if the chassis code isn't in our table."""
     code = chassis_model_suffix(device_info.chassis_oid)
     if code is not None and code in CHASSIS_MODEL_NAMES:
         return CHASSIS_MODEL_NAMES[code]
@@ -20,6 +22,7 @@ def _model_name(device_info: PduDeviceInfo) -> str:
 
 
 def root_device_info(entry: ConfigEntry, device_info: PduDeviceInfo) -> DeviceInfo:
+    """HA DeviceInfo for the real PDU device (the single cmcIIIDevTable row)."""
     return DeviceInfo(
         identifiers={(DOMAIN, entry.entry_id)},
         name=device_info.alias or device_info.name or entry.title,
@@ -32,6 +35,11 @@ def root_device_info(entry: ConfigEntry, device_info: PduDeviceInfo) -> DeviceIn
 
 
 def inlet_device_info(entry: ConfigEntry) -> DeviceInfo:
+    """HA DeviceInfo for the single virtual "Inlet" device.
+
+    One device regardless of phase count -- it's physically one inlet;
+    per-phase sensors live on it as separate entities (see sensor.py).
+    """
     return DeviceInfo(
         identifiers={(DOMAIN, f"{entry.entry_id}_inlet")},
         name="Inlet",
@@ -41,6 +49,7 @@ def inlet_device_info(entry: ConfigEntry) -> DeviceInfo:
 
 
 def outlet_device_info(entry: ConfigEntry, socket_number: int, name: str) -> DeviceInfo:
+    """HA DeviceInfo for one virtual per-outlet device."""
     return DeviceInfo(
         identifiers={(DOMAIN, f"{entry.entry_id}_socket_{socket_number}")},
         name=name,

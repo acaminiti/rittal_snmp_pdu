@@ -38,8 +38,16 @@ Sockets.Socket 01.Power.Active.Value  -> outlet power (W)
 `custom_components/rittal_snmp_pdu/discovery.py` groups these by their
 top-level path (`Unit`, `Phase L<n>`, `Sockets.Socket <nn>`) and classifies
 each leaf from generic MIB metadata alone. `enquiry.py` is the only module
-that talks SNMP to build this map; `discovery.py` itself is pure and unit
-tested against a real capture in `tests/fixtures/dk7955_401_snmpwalk.txt`.
+that talks real SNMP to build this map; `discovery.py` itself is pure and
+unit tested against a real capture in `tests/fixtures/dk7955_401_snmpwalk.txt`.
+
+The rest of the integration (coordinator, entities, config flow) is tested
+against `tests/fakes.py`'s `FakeSnmpClient` -- an in-memory stand-in seeded
+from that same real capture, so the test suite exercises "live-shaped" data
+without ever touching a socket. See each module's docstring for the
+rationale behind non-obvious pieces (e.g. why the switch reads the relay
+var's own value instead of the separate status var, or why polling uses
+plain GET instead of GETBULK).
 
 ## Installation (HACS custom repository)
 
@@ -56,3 +64,8 @@ python3 -m venv .venv
 .venv/bin/pip install -r requirements-test.txt
 .venv/bin/python -m pytest tests/
 ```
+
+No live PDU or network access needed -- `tests/fakes.py` provides a fake
+SNMP client seeded from a real capture, and `pytest-homeassistant-custom-component`
+provides the `hass` test fixture used by the coordinator/entity/config-flow
+tests.

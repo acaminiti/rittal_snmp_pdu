@@ -46,6 +46,7 @@ _V3_SCHEMA = vol.Schema(
 
 
 def build_client(user_input: dict[str, Any]) -> SnmpClient:
+    """Construct an SnmpClient from flow/entry data (shared with __init__.py)."""
     version = SnmpVersion(user_input[CONF_VERSION])
     if version is SnmpVersion.V3:
         credentials: Any = SnmpV3Credentials(
@@ -67,6 +68,8 @@ def build_client(user_input: dict[str, Any]) -> SnmpClient:
 
 
 class RittalSnmpPduConfigFlow(ConfigFlow, domain=DOMAIN):
+    """user -> (v1v2_credentials | v3_credentials) -> confirm -> create_entry."""
+
     VERSION = 1
 
     def __init__(self) -> None:
@@ -74,6 +77,7 @@ class RittalSnmpPduConfigFlow(ConfigFlow, domain=DOMAIN):
         self._discovery_summary: dict[str, Any] = {}
 
     async def async_step_user(self, user_input: dict[str, Any] | None = None) -> FlowResult:
+        """Host/port/version -> route to the matching credentials step."""
         if user_input is not None:
             self._user_input.update(user_input)
             if user_input[CONF_VERSION] == SnmpVersion.V3.value:
@@ -94,6 +98,7 @@ class RittalSnmpPduConfigFlow(ConfigFlow, domain=DOMAIN):
     async def async_step_v1v2_credentials(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
+        """Read/write community strings -> test + discover -> confirm."""
         if user_input is not None:
             self._user_input.update(user_input)
             errors = await self._test_and_discover()
@@ -107,6 +112,7 @@ class RittalSnmpPduConfigFlow(ConfigFlow, domain=DOMAIN):
     async def async_step_v3_credentials(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
+        """SNMPv3 user/auth/priv -> test + discover -> confirm."""
         if user_input is not None:
             self._user_input.update(user_input)
             errors = await self._test_and_discover()
@@ -137,6 +143,7 @@ class RittalSnmpPduConfigFlow(ConfigFlow, domain=DOMAIN):
         return {}
 
     async def async_step_confirm(self, user_input: dict[str, Any] | None = None) -> FlowResult:
+        """Show what discovery found, then create the entry on confirmation."""
         if user_input is not None:
             title = f"Rittal PDU ({self._user_input['host']})"
             return self.async_create_entry(title=title, data=self._user_input)
@@ -154,4 +161,5 @@ class RittalSnmpPduConfigFlow(ConfigFlow, domain=DOMAIN):
     @staticmethod
     @callback
     def async_get_options_flow(config_entry: ConfigEntry) -> OptionsFlow:
+        """Hook up the scan-interval/rediscover options flow."""
         return RittalPduOptionsFlow(config_entry)

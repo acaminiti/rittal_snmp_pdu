@@ -34,6 +34,8 @@ from .snmp_client import SnmpClient, SnmpError
 
 @dataclass(frozen=True)
 class DeviceInfo:
+    """Identity of the single cmcIIIDevTable row backing the whole PDU."""
+
     device_index: int
     name: str
     alias: str
@@ -49,6 +51,7 @@ async def test_connection(client: SnmpClient) -> None:
 
 
 async def fetch_device_info(client: SnmpClient, device_index: int = 1) -> DeviceInfo:
+    """GET the device row's identity columns (name/alias/type/serial/FW/HW)."""
     values = await client.get_many(
         [
             DEV_TABLE_BASE + (DEV_NAME_COL, device_index),

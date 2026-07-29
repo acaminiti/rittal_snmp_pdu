@@ -32,6 +32,8 @@ from pysnmp.hlapi.v3arch.asyncio.auth import (
 
 
 class SnmpVersion(str, Enum):
+    """Which SNMP protocol version to speak (values match config flow input)."""
+
     V1 = "1"
     V2C = "2c"
     V3 = "3"
@@ -39,12 +41,21 @@ class SnmpVersion(str, Enum):
 
 @dataclass
 class SnmpV1V2Credentials:
+    """Community strings for SNMPv1/v2c, with an optional separate write one.
+
+    Some Rittal PDUs are configured with a read-only community distinct
+    from a write-enabled one; write_community falling back to
+    read_community covers units where they're the same.
+    """
+
     read_community: str
     write_community: str | None = None  # falls back to read_community if unset
 
 
 @dataclass
 class SnmpV3Credentials:
+    """SNMPv3 USM credentials: user + auth/priv protocols and keys."""
+
     username: str
     auth_protocol: str = usmHMACSHAAuthProtocol
     auth_key: str | None = None
@@ -82,6 +93,8 @@ class SnmpClient:
         self._engine = SnmpEngine()
 
     def _auth_data(self, *, write: bool = False):
+        """Build pysnmp auth data for this client's version, picking the
+        write community over the read one when write=True (v1/v2c only)."""
         if self._version in (SnmpVersion.V1, SnmpVersion.V2C):
             if not isinstance(self._credentials, SnmpV1V2Credentials):
                 raise SnmpError("v1/v2c requires a community string")
@@ -104,11 +117,13 @@ class SnmpClient:
         )
 
     def _transport(self):
+        """A fresh UDP transport target for one request (pysnmp needs this per-call)."""
         return UdpTransportTarget.create(
             (self._host, self._port), timeout=self._timeout, retries=self._retries
         )
 
     async def get(self, oid: Oid) -> object:
+        """GET a single scalar OID."""
         transport = await self._transport()
         error_indication, error_status, _error_index, var_binds = await get_cmd(
             self._engine,
@@ -125,6 +140,7 @@ class SnmpClient:
         return value
 
     async def get_many(self, oids: list[Oid]) -> dict[Oid, object]:
+        """GET several exact OIDs in one request."""
         transport = await self._transport()
         error_indication, error_status, _error_index, var_binds = await get_cmd(
             self._engine,

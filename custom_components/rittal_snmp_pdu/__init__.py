@@ -17,6 +17,7 @@ type RittalPduConfigEntry = ConfigEntry[RittalPduRuntimeData]
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: RittalPduConfigEntry) -> bool:
+    """Rebuild the client + unit map from stored entry data, poll once, forward to platforms."""
     client = build_client(entry.data)
     device_info = await fetch_device_info(client)
     unit_map = unit_map_from_dict(entry.data["unit_map"])
@@ -36,8 +37,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: RittalPduConfigEntry) ->
 
 
 async def _async_update_listener(hass: HomeAssistant, entry: RittalPduConfigEntry) -> None:
+    """Reload whenever entry data/options change (e.g. after rediscovery)."""
     await hass.config_entries.async_reload(entry.entry_id)
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: RittalPduConfigEntry) -> bool:
+    """Unload the switch/sensor platforms for this entry."""
     return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)

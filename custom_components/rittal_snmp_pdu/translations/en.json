@@ -1,0 +1,50 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Connect to Rittal PDU",
+        "data": {
+          "host": "Host",
+          "port": "Port",
+          "snmp_version": "SNMP version"
+        }
+      },
+      "v1v2_credentials": {
+        "title": "SNMP community",
+        "data": {
+          "read_community": "Read community string",
+          "write_community": "Write community string (leave blank to reuse the read community)"
+        }
+      },
+      "v3_credentials": {
+        "title": "SNMPv3 credentials",
+        "data": {
+          "username": "Username",
+          "auth_key": "Authentication key (leave blank for noAuth)",
+          "priv_key": "Privacy key (leave blank for noPriv)"
+        }
+      },
+      "confirm": {
+        "title": "Rittal PDU discovered",
+        "description": "Found **{name}** with {outlet_count} outlets ({switchable_outlets} switchable) and {inlet_sensor_count} inlet sensor(s).\n\nAdd this PDU to Home Assistant?"
+      }
+    },
+    "error": {
+      "cannot_connect": "Could not connect to the PDU with the given host/credentials."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Rittal PDU options",
+        "data": {
+          "scan_interval": "Polling interval (seconds)",
+          "rediscover": "Rediscover devices (re-run enquiry against the PDU)"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Rediscovery failed: could not connect to the PDU."
+    }
+  }
+}

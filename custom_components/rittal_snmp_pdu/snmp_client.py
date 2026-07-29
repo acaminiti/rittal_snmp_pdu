@@ -17,7 +17,6 @@ from pysnmp.hlapi.v3arch.asyncio import (
     SnmpEngine,
     UdpTransportTarget,
     UsmUserData,
-    bulk_cmd,
     bulk_walk_cmd,
     get_cmd,
     set_cmd,
@@ -138,26 +137,20 @@ class SnmpClient:
             raise SnmpError(error_status.prettyPrint())
         return {tuple(int(p) for p in name): value for name, value in var_binds}
 
-    async def get_bulk_many(self, oids: list[Oid]) -> dict[Oid, object]:
-        """Like get_many, but uses GETBULK when the version supports it."""
-        if self._version is SnmpVersion.V1 or len(oids) <= 1:
-            return await self.get_many(oids)
+    # Max varbinds per GET request. GETBULK doesn't apply here -- these are
+    # already-known exact OIDs, not a table to walk (GETBULK returns the OID
+    # *after* each one it's given, not the value at it), so plain GET is the
+    # correct primitive. Chunking keeps each request/response comfortably
+    # under typical agent/PDU size limits when polling many outlets.
+    _GET_CHUNK_SIZE = 40
 
-        transport = await self._transport()
-        error_indication, error_status, _error_index, var_binds = await bulk_cmd(
-            self._engine,
-            self._auth_data(),
-            transport,
-            ContextData(),
-            0,
-            0,
-            *(ObjectType(ObjectIdentity(oid)) for oid in oids),
-        )
-        if error_indication:
-            raise SnmpError(str(error_indication))
-        if error_status:
-            raise SnmpError(error_status.prettyPrint())
-        return {tuple(int(p) for p in name): value for name, value in var_binds[: len(oids)]}
+    async def get_bulk_many(self, oids: list[Oid]) -> dict[Oid, object]:
+        """Fetch many known OIDs at once, chunked into multiple GETs as needed."""
+        results: dict[Oid, object] = {}
+        for start in range(0, len(oids), self._GET_CHUNK_SIZE):
+            chunk = oids[start : start + self._GET_CHUNK_SIZE]
+            results.update(await self.get_many(chunk))
+        return results
 
     async def walk_column(self, prefix: Oid) -> dict[Oid, object]:
         """Walk every OID under `prefix`, returning {full_oid: value}."""
